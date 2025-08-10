@@ -6,7 +6,7 @@ name: Build and Release Package
 on:
   push:
     tags:
-      - 'v*' # For example: v1.0, v2.3, etc.
+      - '*' # For example: v1.0, v2.3, etc.
 
 jobs:
   build:
