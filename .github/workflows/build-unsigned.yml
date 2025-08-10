@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       # This is the name of your package, as defined in its `template` file.
-      PKG_NAME: "cli11" # <-- 1. CHANGE THIS
+      PKG_NAME: cli11 # <-- 1. CHANGE THIS
       # This is the path where your project repo will be checked out.
       PROJECT_PATH: "my-project-repo" # <-- 2. (Optional) CHANGE THIS
       XBPS_TARGET_ARCH: ${{ matrix.arch }}
