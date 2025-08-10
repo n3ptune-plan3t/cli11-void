@@ -10,7 +10,7 @@ jobs:
   build-and-upload:
     runs-on: ubuntu-22.04
     env:
-      PKG_NAME: cli11
+      PKG_NAME: quickshell
       PROJECT_PATH: my-project-repo
       XBPS_TARGET_ARCH: x86_64
 
