@@ -1,15 +1,13 @@
-# .github/workflows/release.yml
+# .github/workflows/build-artifact.yml
 
-name: Create Release
+name: Build Package Artifact
 
-# This section is changed to trigger ONLY on tag pushes
+# This workflow can now be run manually from the Actions tab
 on:
-  push:
-    tags:
-      - 'v*' # Triggers on tags like v1.0, v1.1.2, etc.
+  workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build-and-upload:
     runs-on: ubuntu-22.04
     env:
       PKG_NAME: cli11
@@ -17,28 +15,23 @@ jobs:
       XBPS_TARGET_ARCH: x86_64
 
     steps:
-      # ... (Your existing build steps go here) ...
-      
-      # Example build steps - ensure your steps are here
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Build your package
-        run: echo "Building package ${{ env.PKG_NAME }}..." # Replace with your actual build commands
-      
-      - name: Prepare release files
+        run: echo "Building package ${{ env.PKG_NAME }}..." # Replace with your actual full build commands
+
+      - name: Prepare package files for upload
         run: |
           # This is an example, replace with your actual file preparation
           mkdir -p void-packages/hostdir/binpkgs
           touch void-packages/hostdir/binpkgs/cli11-1.0_1.x86_64.xbps
-          touch void-packages/hostdir/binpkgs/repodata
-          touch void-packages/hostdir/binpkgs/sha256sum.txt
 
-      # This step will now succeed because a tag exists
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      # This step replaces the "Create GitHub Release" step
+      - name: Upload .xbps Package as Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            void-packages/hostdir/binpkgs/cli11*
-            void-packages/hostdir/binpkgs/*repodata
-            void-packages/hostdir/binpkgs/sha256sum.txt
+          # This will be the name of the downloadable file
+          name: xbps-package-${{ env.PKG_NAME }}
+          # This is the path to the file you want to upload
+          path: void-packages/hostdir/binpkgs/*.xbps
