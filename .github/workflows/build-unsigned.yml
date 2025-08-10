@@ -1,45 +1,34 @@
-# .github/workflows/build-unsigned.yml
+# .github/workflows/build-release.yml
 
-name: Build and Release Unsigned Package
+name: Build and Release Package
 
+# Step 1: Changed the trigger to run only on tag pushes
 on:
   push:
-    branches:
-      - main # Runs on any tag push, e.g., v1.0, v2.1.3
+    tags:
+      - 'v*' # For example: v1.0, v2.3, etc.
 
 jobs:
   build:
-    strategy:
-      max-parallel: 1 # Builds architectures sequentially
-      matrix:
-        arch: [x86_64, x86_64-musl] # Target architectures
-
     runs-on: ubuntu-22.04
+    # Step 2: Removed the build matrix and set the architecture directly
     env:
-      # This is the name of your package, as defined in its `template` file.
-      PKG_NAME: cli11 # <-- 1. CHANGE THIS
-      # This is the path where your project repo will be checked out.
-      PROJECT_PATH: "my-project-repo" # <-- 2. (Optional) CHANGE THIS
-      XBPS_TARGET_ARCH: ${{ matrix.arch }}
+      PKG_NAME: cli11
+      PROJECT_PATH: my-project-repo
+      XBPS_TARGET_ARCH: x86_64
 
     steps:
-      # Step 1: Free up disk space on the runner
       - name: Free disk space
         run: |
-          echo "Initial free space:"
-          df -h .
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          echo "Free space after cleanup:"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
           df -h .
 
-      # Step 2: Checkout your project repository containing the srcpkgs template
       - name: Checkout your project repository
         uses: actions/checkout@v4
         with:
           path: ${{ env.PROJECT_PATH }}
 
-      # Step 3: Checkout void-packages and xbps tools
-      - name: Checkout void-packages
+      - name: Checkout void-packages and xbps
         uses: actions/checkout@v4
         with:
           repository: void-linux/void-packages
@@ -51,11 +40,9 @@ jobs:
           ref: 0.60.5
           path: xbps
 
-      # Step 4: Build and install a local copy of xbps build tools
       - name: Build and install xbps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libarchive-dev
+          sudo apt-get update -y && sudo apt-get install -y libarchive-dev
           cd xbps
           ./configure --enable-rpath --prefix=/opt/xbps/usr
           make -j$(nproc)
@@ -63,41 +50,28 @@ jobs:
           export PATH="/opt/xbps/usr/bin/:$PATH"
           xbps-install --version
 
-      # Step 5: Copy your package template into the void-packages tree
       - name: Copy package template
-        run: |
-          cp -rv ${{ env.PROJECT_PATH }}/srcpkgs/${{ env.PKG_NAME }} void-packages/srcpkgs
+        run: cp -rv ${{ env.PROJECT_PATH }}/srcpkgs/${{ env.PKG_NAME }} void-packages/srcpkgs
 
-      # Step 6: Build the package using xbps-src
       - name: Build package
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-          ./xbps-src -m masterdir-${{ matrix.arch }} -A ${{ matrix.arch }} binary-bootstrap
-          ./xbps-src pkg -j$(nproc) -m masterdir-${{ matrix.arch }} ${{ env.PKG_NAME }}
+          ./xbps-src -m masterdir-${{ env.XBPS_TARGET_ARCH }} -A ${{ env.XBPS_TARGET_ARCH }} binary-bootstrap
+          ./xbps-src pkg -j$(nproc) -m masterdir-${{ env.XBPS_TARGET_ARCH }} ${{ env.PKG_NAME }}
 
-      # Step 7: Create the repository index (unsigned)
-      # This step replaces the previous "Sign repository" step.
       - name: Create repository index
         working-directory: void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          # This command adds all .xbps packages to the index file (`repodata`).
-          # It does not perform any signing.
           xbps-rindex -a ./*.xbps
+          sha256sum *.xbps > sha256sum.txt
 
-      # Step 8: Generate checksums for the release assets
-      - name: Generate checksums
-        working-directory: void-packages/hostdir/binpkgs/
-        run: |
-          sha256sum $(echo ${{ env.PKG_NAME }}-*.${{ matrix.arch }}.xbps) > sha256sum.txt
-          cat sha256sum.txt
-
-      # Step 9: Create GitHub Release and upload artifacts
-      - name: Create Release
+      # This step will now succeed because the workflow is triggered by a tag
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            void-packages/hostdir/binpkgs/${{ env.PKG_NAME }}*
+            void-packages/hostdir/binpkgs/cli11*
             void-packages/hostdir/binpkgs/*repodata
             void-packages/hostdir/binpkgs/sha256sum.txt
