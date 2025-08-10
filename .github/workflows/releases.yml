@@ -1,0 +1,45 @@
+# .github/workflows/release.yml
+
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-22.04
+    
+    permissions:
+      contents: write # <-- THE FIX
+
+    env:
+      PKG_NAME: cli11
+      PROJECT_PATH: my-project-repo
+      XBPS_TARGET_ARCH: x86_64
+
+    steps:
+      # ... (Your checkout, build, and file preparation steps go here) ...
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build your package
+        run: echo "Building package ${{ env.PKG_NAME }}..." # Replace with your actual build commands
+      
+      - name: Prepare release files
+        run: |
+          mkdir -p void-packages/hostdir/binpkgs
+          touch void-packages/hostdir/binpkgs/cli11-1.0_1.x86_64.xbps
+          touch void-packages/hostdir/binpkgs/repodata
+          touch void-packages/hostdir/binpkgs/sha256sum.txt
+
+      # This step will now have permission to update the existing release
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            void-packages/hostdir/binpkgs/cli11*
+            void-packages/hostdir/binpkgs/*repodata
+            void-packages/hostdir/binpkgs/sha256sum.txt
